@@ -1,12 +1,12 @@
 using UnityEngine;
 
-/// the mario controller
+/// mario
 public class Player: MonoBehaviour {
     void Awake() {
-        name = "mario";
+        name = "Mario";
     }
 
     void Start() {
-        Debug.Log($"it's a me {name}");
+        Debug.Log($"it's a me {name.ToLower()}");
     }
 }

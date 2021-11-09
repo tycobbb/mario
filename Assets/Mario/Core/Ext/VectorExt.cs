@@ -7,4 +7,9 @@ public static class Vec2 {
         vec.Normalize();
         return vec;
     }
+
+    /// create a Vector3 with components (x, 0, y)
+    public static Vector3 XZ(this Vector2 vec) {
+        return new Vector3(vec.x, 0.0f, vec.y);
+    }
 }
