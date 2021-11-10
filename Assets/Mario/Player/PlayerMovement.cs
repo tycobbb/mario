@@ -5,9 +5,6 @@ using UnityEngine.InputSystem;
 public class PlayerMovement: MonoBehaviour {
     // -- tuning --
     [Header("tuning")]
-    [Tooltip("the mass")]
-    [SerializeField] float m_Mass = 1.0f;
-
     [Tooltip("the move speed")]
     [SerializeField] float m_MoveSpeed = 10.0f;
 
@@ -19,6 +16,9 @@ public class PlayerMovement: MonoBehaviour {
 
     [Tooltip("the dash speed over time")]
     [SerializeField] AnimationCurve m_DashCurve = CurveExt.One();
+
+    [Tooltip("the turn speed")]
+    [SerializeField] float m_TurnSpeed = 1.0f;
 
     [Tooltip("the jump speed")]
     [SerializeField] float m_JumpSpeed = 1.0f;
@@ -83,7 +83,7 @@ public class PlayerMovement: MonoBehaviour {
 
     /// move the player
     void Move() {
-        // if there is a move to make
+        // if there is movement
         if (m_DashTime == null) {
             return;
         }
@@ -94,7 +94,7 @@ public class PlayerMovement: MonoBehaviour {
         var pct = Mathf.Clamp01((Time.time - m_DashTime.Value) / m_DashDuration);
         var spd = m_DashCurve.Evaluate(pct) * m_MoveSpeed;
 
-        // move in player's facing direction
+        // move using y-axis input in player's facing direction
         var dirM = Vector3.ProjectOnPlane(m_MoveDir.XZ(), t.up);
         var move = dirM * spd;
 
@@ -121,5 +121,16 @@ public class PlayerMovement: MonoBehaviour {
         if (Vector3.Dot(curr, m_Velocity) < 0.0f) {
             m_Velocity = Vector3.zero;
         }
+    }
+
+    // -- queries --
+    /// the player's transform
+    public Transform Transform {
+        get => m_Controller.transform;
+    }
+
+    /// the player's velocity scale
+    public Vector3 FindVelocityScale() {
+        return m_Velocity / m_MoveSpeed;
     }
 }
