@@ -17,8 +17,8 @@ public class PlayerMovement: MonoBehaviour {
     [Tooltip("the dash speed over time")]
     [SerializeField] AnimationCurve m_DashCurve = CurveExt.One();
 
-    [Tooltip("the turn speed")]
-    [SerializeField] float m_TurnSpeed = 1.0f;
+    [Tooltip("the turn speed in degrees / s")]
+    [SerializeField] float m_TurnSpeed = 30.0f;
 
     [Tooltip("the jump speed")]
     [SerializeField] float m_JumpSpeed = 1.0f;
@@ -27,6 +27,9 @@ public class PlayerMovement: MonoBehaviour {
     [Header("nodes")]
     [Tooltip("the character controller")]
     [SerializeField] CharacterController m_Controller;
+
+    [Tooltip("the look direction")]
+    [SerializeField] Transform m_Look;
 
     [Tooltip("the player input asset")]
     [SerializeField] PlayerInput m_Input;
@@ -41,6 +44,9 @@ public class PlayerMovement: MonoBehaviour {
     /// the current velocity
     Vector3 m_Velocity;
 
+    /// the target rotation
+    Quaternion m_Rotation;
+
     /// the actions
     PlayerActions m_Actions;
 
@@ -49,21 +55,25 @@ public class PlayerMovement: MonoBehaviour {
         m_Actions = new PlayerActions(m_Input);
     }
 
+    void Start() {
+        var t = transform;
+        m_Rotation = t.rotation;
+    }
+
     void Update() {
-        // read input
-        ReadMove();
+        Read();
     }
 
     void FixedUpdate() {
-        // apply movement
-        Move();
-        Drag();
-
-        // move character
-        m_Controller.Move(m_Velocity * Time.deltaTime);
+        Play();
     }
 
     // -- commands --
+    /// read input
+    void Read() {
+        ReadMove();
+    }
+
     /// read the move input
     void ReadMove() {
         // get input dir
@@ -81,6 +91,28 @@ public class PlayerMovement: MonoBehaviour {
         }
     }
 
+    /// run movment behavior
+    void Play() {
+        // apply movement
+        Move();
+        Drag();
+
+        // move character
+        var c = m_Controller;
+        c.Move(m_Velocity * Time.deltaTime);
+
+        // turn towards look direction
+        if (m_Rotation != Quaternion.identity) {
+            var t = c.transform;
+
+            t.rotation = Quaternion.RotateTowards(
+                t.rotation,
+                m_Rotation,
+                m_TurnSpeed * Time.deltaTime
+            );
+        }
+    }
+
     /// move the player
     void Move() {
         // if there is movement
@@ -88,18 +120,17 @@ public class PlayerMovement: MonoBehaviour {
             return;
         }
 
-        var t = m_Controller.transform;
-
         // get move speed scaled by progress through dash
         var pct = Mathf.Clamp01((Time.time - m_DashTime.Value) / m_DashDuration);
         var spd = m_DashCurve.Evaluate(pct) * m_MoveSpeed;
 
-        // move using y-axis input in player's facing direction
-        var dirM = Vector3.ProjectOnPlane(m_MoveDir.XZ(), t.up);
-        var move = dirM * spd;
+        // move using input in player's facing direction
+        var dir = Vector3.ProjectOnPlane(m_MoveDir.XZ(), m_Look.up);
+        var move = dir * spd;
 
         // update acceleration
         m_Velocity = move;
+        m_Rotation = Quaternion.LookRotation(dir.normalized);
     }
 
     /// apply friction
@@ -110,8 +141,8 @@ public class PlayerMovement: MonoBehaviour {
         }
 
         // get grounded friction
-        var dirF = -Vector3.Normalize(m_Velocity);
-        var friction = dirF * m_MoveFriction;
+        var dir = -Vector3.Normalize(m_Velocity);
+        var friction = dir * m_MoveFriction;
 
         // apply friction
         var curr = m_Velocity;
@@ -123,14 +154,19 @@ public class PlayerMovement: MonoBehaviour {
         }
     }
 
-    // -- queries --
-    /// the player's transform
-    public Transform Transform {
-        get => m_Controller.transform;
+    // -- PlayerState --
+    /// if the player is moving
+    public bool IsMoving {
+        get => m_DashTime != null;
+    }
+
+    /// the player's position
+    public Vector3 Position {
+        get => m_Controller.transform.position;
     }
 
     /// the player's velocity scale
-    public Vector3 FindVelocityScale() {
-        return m_Velocity / m_MoveSpeed;
+    public Vector3 Velocity {
+        get => m_Velocity;
     }
 }
